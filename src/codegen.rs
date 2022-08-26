@@ -233,6 +233,19 @@ impl<'a> GeneratorContext<'a> {
             },
         }
     }
+
+    fn get_full_path<'b>(&'b self, id: u64) -> ::capnp::Result<String> {
+        match self.scope_map.get(&id) {
+            None => Err(Error::failed(format!("node not found: {}", id))),
+            Some(v) => Ok(v.iter()
+                .fold(String::new(), |a, b| format!("{}/{}", a, b))
+            )
+            /*match v.last() {
+                None => Err(Error::failed(format!("node has no scope: {}", id))),
+                Some(n) => Ok(&n),
+            }*/,
+        }
+    }
 }
 
 fn path_to_stem_string<P: AsRef<::std::path::Path>>(path: P) -> ::capnp::Result<String> {
@@ -641,7 +654,11 @@ fn handle_list(
             "getFloat64List".to_string(),
             None,
         ),
-        type_::Which::Text(_) => todo!(),
+        type_::Which::Text(_) => (
+            "core.List<core.String>".to_string(),
+            "getTextList".to_string(),
+            None,
+            ),
         type_::Which::Data(_) => todo!(),
         type_::Which::List(inner) => {
             let inner = handle_type(gen, node_id, inner.get_element_type()?)?;
@@ -1010,7 +1027,7 @@ fn handle_slot(
                         Line(format!("set {}({} value) {{", field_name, enum_ty)),
                         Indent(Box::new(Branch(vec![
                             Line(format!("segmentView.setUInt16({}, {}Tag.{}.index);", discrim, group, field_name.to_string().to_case(Case::Pascal))),
-                            Line(format!("segmentView.setUInt16({}, value{});", offset, default_value))
+                            Line(format!("segmentView.setUInt16({}, value.index{});", offset, default_value))
                         ]))),
                         Line("}".to_string())
                     ]))
@@ -1315,7 +1332,7 @@ fn generate_node(
     let nested_nodes = node_reader.get_nested_nodes()?;
     for nested_node in nested_nodes.iter() {
         let id = nested_node.get_id();
-        nested_output.push(generate_node(gen, id, gen.get_last_name(id)?, None, addl_files)?);
+        nested_output.push(generate_node(gen, id, &gen.get_last_name(id)?, None, addl_files)?);
     }
 
     match node_reader.which()? {
@@ -1639,7 +1656,7 @@ fn generate_node(
         node::Const(c) => {
             let needs_static = gen.scope_map.get(&node_id).unwrap().len() > 2;
             let maybe_static = if needs_static { "static " } else { "" };
-            let styled_name = snake_to_upper_case(gen.get_last_name(node_id)?);
+            let styled_name = snake_to_upper_case(&gen.get_last_name(node_id)?);
 
             let typ = c.get_type()?;
             let formatted_text = match (typ.which()?, c.get_value()?.which()?) {
