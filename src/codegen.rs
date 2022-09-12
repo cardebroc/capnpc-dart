@@ -976,6 +976,22 @@ fn handle_slot(
     let (read_type, read_func, read_extra) = handle_type(gen, node_id, slot_reader.get_type()?)?;
     let default_value = slot_reader.get_default_value()?;
     let default = default_value.which()?;
+    let value: String;
+    match default {
+        schema_capnp::value::Which::Void(_) => value = "".to_string(),
+        schema_capnp::value::Which::Bool(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Int8(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Int16(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Int32(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Int64(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Uint8(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Uint16(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Uint32(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Uint64(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Float32(v) => value = format!(", defaultValue: {}", v.to_string()),
+        schema_capnp::value::Which::Float64(v) => value = format!(", defaultValue: {}", v.to_string()),
+        _ => value = "".to_string(),
+    };
     let default_value = "";
 
     match in_group {
@@ -993,7 +1009,7 @@ fn handle_slot(
                 Indent(Box::new(Line(format!("return segmentView.{}({}{}{});", read_func,
                 offset,
                 read_extra.unwrap_or(String::new()),
-                default_value))))
+                value))))
             
             ]))), Line("}".to_string())]));
 
@@ -1003,7 +1019,7 @@ fn handle_slot(
                         Line(format!("set {}({} value) {{", field_name, ty)),
                         Indent(Box::new(Branch(vec![
                             Line(format!("segmentView.setUInt16({}, {}Tag.{}.index);", discrim, group, field_name.to_string().to_case(Case::Pascal))),
-                            Line(format!("segmentView.{}({}, value{});", func, offset, default_value))
+                            Line(format!("segmentView.{}({}, value{});", func, offset, value))
                         ]))),
                         Line("}".to_string())
                     ]))
@@ -1027,7 +1043,7 @@ fn handle_slot(
                         Line(format!("set {}({} value) {{", field_name, enum_ty)),
                         Indent(Box::new(Branch(vec![
                             Line(format!("segmentView.setUInt16({}, {}Tag.{}.index);", discrim, group, field_name.to_string().to_case(Case::Pascal))),
-                            Line(format!("segmentView.setUInt16({}, value.index{});", offset, default_value))
+                            Line(format!("segmentView.setUInt16({}, value.index{});", offset, value))
                         ]))),
                         Line("}".to_string())
                     ]))
@@ -1049,7 +1065,7 @@ fn handle_slot(
                             Line(format!("segmentView.setUInt16({}, {}Tag.{}.index);", discrim, group, field_name.to_string().to_case(Case::Pascal))),
                             Line(format!(
                                 "segmentView.setStruct({}, value{});",
-                                offset, default_value
+                                offset, value
                             ))
                         ]))),
                         Line("}".to_string()),
@@ -1086,14 +1102,14 @@ fn handle_slot(
                 read_func,
                 offset,
                 read_extra.unwrap_or(String::new()),
-                default_value
+                value
             ))]));
 
             match handle_write_type(gen, slot_reader.get_type()?)? {
                 WriteResult::Simple(ty, func) => {
                     setters.push(Branch(vec![Line(format!(
                         "set {} ({} value) => segmentView.{}({}, value{});",
-                        field_name, ty, func, offset, default_value
+                        field_name, ty, func, offset, value
                     ))]));                    
                 }
                 WriteResult::AnyPointer => {
@@ -1105,7 +1121,7 @@ fn handle_slot(
                 WriteResult::Enum(enum_ty) => {
                     setters.push(Branch(vec![Line(format!(
                         "set {} ({} value) => segmentView.setUInt16({}, value.index{});",
-                        field_name, enum_ty, offset, default_value
+                        field_name, enum_ty, offset, value
                     ))]));
                 }
                 WriteResult::Struct(struct_name) => {
@@ -1121,7 +1137,7 @@ fn handle_slot(
                         )))),
                         Line(format!(
                             "set {} ({}Reader value) => segmentView.setStruct({}, value{});",
-                            field_name, struct_name, offset, default_value
+                            field_name, struct_name, offset, value
                         )),
                     ]));
                 }
