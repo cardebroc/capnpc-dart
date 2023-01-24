@@ -903,7 +903,7 @@ fn handle_write_type(
             WriteResult::Simple("core.String".to_string(), "setText".to_string())
         }
         type_::Which::Data(_) => {
-            WriteResult::Simple("typed_data.ByteBuffer".to_string(), "setData".to_string())
+            WriteResult::Simple("typed_data.Uint8List".to_string(), "setData".to_string())
         }
         type_::Which::List(ot1) => {
             let element_type = ot1.get_element_type()?;
